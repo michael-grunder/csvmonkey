@@ -72,4 +72,4 @@ example: example.o $(STLIBNAME)
 	$(CC) -oexample $< $(STLIBNAME) -lstdc++
 
 clean:
-	rm -f $(STLIBNAME) $(DYLIBNAME) $(OBJ) *.o
+	rm -f example $(STLIBNAME) $(DYLIBNAME) $(OBJ) *.o
