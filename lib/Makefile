@@ -69,7 +69,7 @@ install: $(DYLIBNAME) $(STLIBNAME)
 	$(INSTALL) $(STLIBNAME) $(INSTALL_LIBRARY_PATH)
 
 example: example.o $(STLIBNAME)
-	$(CC) -oexample -lstdc++ $< $(STLIBNAME)
+	$(CC) -oexample $< $(STLIBNAME) -lstdc++
 
 clean:
 	rm -f $(STLIBNAME) $(DYLIBNAME) $(OBJ) *.o
