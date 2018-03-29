@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     while(reader.read_row()) {
         //printf("%d\n", i++);
         if(0 && rows++ >= 160075) {
-            for(int i = 0; i < row.count; i++) {
+            for(unsigned int i = 0; i < row.count; i++) {
                 CsvCell &cell = row.cells[i];
                 printf("%d: %i: %.*s\n", rows, i, (int)cell.size, cell.ptr);
             }

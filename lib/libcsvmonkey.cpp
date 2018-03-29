@@ -51,10 +51,9 @@ extern "C" {
     }
 
     static csvContext *get_mapped_context(const char *filename, csvOptions *opt) {
-        MappedFileCursor *cursor;
+        MappedFileCursor *cursor = new MappedFileCursor();
 
         try {
-            cursor = new MappedFileCursor();
             cursor->open(filename);
         } catch(csvmonkey::Error &e) {
             delete cursor;

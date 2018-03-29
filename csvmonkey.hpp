@@ -320,7 +320,7 @@ struct CsvCell
         auto s = std::string(ptr, size);
         if(escaped) {
             int o = 0;
-            for(int i = 0; i < s.size();) {
+            for(unsigned int i = 0; i < s.size();) {
                 char c = s[i];
                 if((escapechar && c == escapechar) || (c == quotechar)) {
                     i++;
@@ -451,7 +451,7 @@ class CsvCursor
 {
     public:
     std::vector<CsvCell> cells;
-    int count;
+    unsigned int count;
 
     CsvCursor()
         : cells(32)
@@ -462,7 +462,7 @@ class CsvCursor
     bool
     by_value(const std::string &value, CsvCell *&cell)
     {
-        for(int i = 0; i < count; i++) {
+        for(unsigned int i = 0; i < count; i++) {
             if(value == cells[i].as_str(0, 0)) {
                 cell = &cells[i];
                 return true;

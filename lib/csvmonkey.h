@@ -32,7 +32,7 @@ typedef struct csvCell {
 } csvCell;
 
 typedef struct csvRow {
-    int columns;
+    unsigned int columns;
     csvCell *column;
 } csvRow;
 
