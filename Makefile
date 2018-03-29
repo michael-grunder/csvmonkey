@@ -15,6 +15,7 @@ test: test.cpp csvmonkey.hpp Makefile
 
 clean:
 	rm -f test cachegrind* perf.data* *.gcda
+	rm -f lib/*.o *.dylib *.so
 
 pgo: X+=-DNDEBUG
 pgo:
@@ -26,3 +27,6 @@ grind:
 	rm -f cachegrind.out.*
 	valgrind --tool=cachegrind --branch-sim=yes ./test ram.64mb.csv
 	cg_annotate --auto=yes cachegrind.out.*
+
+library:
+	cd lib && make

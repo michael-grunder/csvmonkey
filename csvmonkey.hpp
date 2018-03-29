@@ -12,6 +12,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
+#include <cinttypes>
+
+#define CSVMONKEY_MAJOR 0
+#define CSVMONKEY_MINOR 1
+#define CSVMONKEY_PATCH 0
+#define CSVMONKEY_SONAME 0.1
 
 #if defined(__SSE4_2__) && !defined(CSM_IGNORE_SSE42)
 #define CSM_USE_SSE42
@@ -27,7 +33,7 @@
 #ifdef CSVMONKEY_DEBUG
 #   define CSM_DEBUG(x, ...) fprintf(stderr, "csvmonkey: " x "\n", ##__VA_ARGS__);
 #else
-#   define CSM_DEBUG(x...) {}
+#   define CSM_DEBUG(x...)
 #endif
 
 
@@ -69,6 +75,7 @@ class StreamCursor
     virtual size_t size() = 0;
     virtual void consume(size_t n) = 0;
     virtual bool fill() = 0;
+    virtual ~StreamCursor() {}
 };
 
 
@@ -89,7 +96,7 @@ class MappedFileCursor
     {
     }
 
-    ~MappedFileCursor()
+    virtual ~MappedFileCursor()
     {
         if(startp_) {
             ::munmap(startp_, endp_ - startp_);
@@ -183,7 +190,6 @@ class MappedFileCursor
     }
 };
 
-
 class BufferedStreamCursor
     : public StreamCursor
 {
@@ -245,7 +251,7 @@ class BufferedStreamCursor
         }
 
         ssize_t rc = readmore();
-        if(rc == -1) {
+        if(rc == -1 || rc == 0) {
             CSM_DEBUG("readmore() failed");
             return false;
         }
@@ -254,6 +260,16 @@ class BufferedStreamCursor
         CSM_DEBUG("fill() old write_pos = %lu", write_pos_);
         write_pos_ += rc;
         CSM_DEBUG("fill() new write_pos = %lu", write_pos_);
+
+        /* Make sure we have 15 bytes of zero padding to the right of our
+         * buffer, as PCMPSTRI works on 16 byte vectors and we may execute
+         * it starting at vec_[vec_.size() - 1] */
+         size_t cursize = vec_.size();
+         if (cursize - write_pos_ < 15) {
+             cursize += (15 - (cursize - write_pos_));
+             vec_.resize(cursize, 0);
+         }
+
         return write_pos_ > 0;
     }
 };
@@ -277,6 +293,20 @@ class FdStreamCursor
     }
 };
 
+class CallbackStreamCursor : public BufferedStreamCursor {
+    void *privdata_;
+    ssize_t (*callback_)(void*, void*, size_t);
+
+    public:
+        CallbackStreamCursor(ssize_t (*cb)(void*, void*, size_t), void *privdata) {
+            privdata_ = privdata;
+            callback_ = cb;
+        }
+
+        virtual ssize_t readmore() {
+            return callback_(privdata_, &vec_[write_pos_], vec_.size() - write_pos_);
+        }
+};
 
 struct CsvCell
 {
@@ -390,7 +420,6 @@ using StringSpanner = StringSpannerFallback;
 #   define CSM_ATTR_SSE42
 #endif // !CSM_USE_SSE42
 
-
 #ifdef CSM_USE_SSE42
 struct StringSpannerSse42
 {
@@ -450,7 +479,6 @@ class CsvReader
     const char *p_;
     char delimiter_;
     char quotechar_;
-    char escapechar_;
     bool yield_incomplete_row_;
 
     public:
@@ -484,8 +512,8 @@ class CsvReader
                 CSM_DEBUG("pos exceeds size"); \
                 return kCsmTryParseUnderrun; \
             } \
-            CSM_DEBUG("p = %#p; remain = %ld; next char is: %d", p, endp_-p, (int)*p) \
-            CSM_DEBUG("%d: distance to next newline: %d", __LINE__, strchr(p, '\n') - p);
+            CSM_DEBUG("p = %08" PRIxPTR "; remain = %ld; next char is: %d", (uintptr_t)p, endp_-p, (int)*p) \
+            CSM_DEBUG("%d: distance to next newline: %ld", __LINE__, strchr(p, '\n') - p);
 
         #define NEXT_CELL() \
             ++cell; \
@@ -604,7 +632,6 @@ class CsvReader
             goto in_unquoted_cell;
         }
 
-    end_of_buf:
         CSM_DEBUG("error out");
         return kCsmTryParseUnderrun;
     }
@@ -692,11 +719,10 @@ class CsvReader
         , p_(stream.buf())
         , delimiter_(delimiter)
         , quotechar_(quotechar)
-        , escapechar_(escapechar)
+        , yield_incomplete_row_(yield_incomplete_row)
         , stream_(stream)
         , quoted_cell_spanner_(quotechar, escapechar)
         , unquoted_cell_spanner_(delimiter, '\r', '\n', escapechar)
-        , yield_incomplete_row_(yield_incomplete_row)
     {
     }
 };
